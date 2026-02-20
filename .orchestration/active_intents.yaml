@@ -1,0 +1,29 @@
+# Active intents for intent-governed orchestration
+# The model MUST call select_active_intent with one of these ids before making code changes.
+# Each intent can have: id, constraints, scope (or owned_scope)
+   active_intents:
+     - id: "INT-001"
+       name: "Auth middleware refactor"
+       status: "IN_PROGRESS"
+       owned_scope: ["src/auth/**"]
+       constraints: ["Preserve existing tests"]
+     - id: "INT-002"
+       name: "User authentication service"
+       status: "IN_PROGRESS"
+       owned_scope: ["src/auth/**"]
+       constraints: ["Preserve existing tests"]
+     - id: "INT-003"
+       name: "User authentication service"
+       status: "IN_PROGRESS"
+       owned_scope: ["src/auth/**"]
+       constraints: ["Preserve existing tests"]
+     - id: "INT-004"
+       name: "User authentication service"
+       status: "IN_PROGRESS"
+       owned_scope: ["src/auth/**"]
+       constraints: ["Preserve existing tests"]
+     - id: "INT-005"
+       name: "User authentication service"
+       status: "IN_PROGRESS"
+       owned_scope: ["src/auth/**"]
+       constraints: ["Preserve existing tests"]
