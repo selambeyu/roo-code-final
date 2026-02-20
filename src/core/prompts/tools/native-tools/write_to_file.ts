@@ -6,14 +6,20 @@ const WRITE_TO_FILE_DESCRIPTION = `Request to write content to a file. This tool
 
 When using this tool, use it directly with the desired content. You do not need to display the content before using the tool. ALWAYS provide the COMPLETE file content in your response. This is NON-NEGOTIABLE. Partial updates or placeholders like '// rest of code unchanged' are STRICTLY FORBIDDEN. Failure to do so will result in incomplete or broken code.
 
+When Intent-Driven Architect (reasoning loop) is enabled, you MUST provide intent_id (the active intent ID from select_active_intent) and mutation_class: use AST_REFACTOR for syntax-only changes that preserve intent (refactors, formatting), or INTENT_EVOLUTION for new features or behavior changes.
+
 When creating a new project, organize all new files within a dedicated project directory unless the user specifies otherwise. Structure the project logically, adhering to best practices for the specific type of project being created.
 
 Example: Writing a configuration file
-{ "path": "frontend-config.json", "content": "{\\n  \\"apiEndpoint\\": \\"https://api.example.com\\",\\n  \\"theme\\": {\\n    \\"primaryColor\\": \\"#007bff\\"\\n  }\\n}" }`
+{ "path": "frontend-config.json", "content": "{\\n  \\"apiEndpoint\\": \\"https://api.example.com\\",\\n  \\"theme\\": {\\n    \\"primaryColor\\": \\"#007bff\\"\\n  }\\n}", "intent_id": "REQ-001", "mutation_class": "INTENT_EVOLUTION" }`
 
 const PATH_PARAMETER_DESCRIPTION = `The path of the file to write to (relative to the current workspace directory)`
 
 const CONTENT_PARAMETER_DESCRIPTION = `The content to write to the file. ALWAYS provide the COMPLETE intended content of the file, without any truncation or omissions. You MUST include ALL parts of the file, even if they haven't been modified. Do NOT include line numbers in the content.`
+
+const INTENT_ID_PARAMETER_DESCRIPTION = `The active intent ID (REQ-ID from select_active_intent). Required when Intent-Driven Architect is enabled. Must match an entry in .orchestration/active_intents.yaml.`
+
+const MUTATION_CLASS_PARAMETER_DESCRIPTION = `Semantic classification of the change. Use AST_REFACTOR for syntax-only changes (refactors, formatting, same intent). Use INTENT_EVOLUTION for new features or behavior changes. Required when Intent-Driven Architect is enabled.`
 
 export default {
 	type: "function",
@@ -31,6 +37,15 @@ export default {
 				content: {
 					type: "string",
 					description: CONTENT_PARAMETER_DESCRIPTION,
+				},
+				intent_id: {
+					type: "string",
+					description: INTENT_ID_PARAMETER_DESCRIPTION,
+				},
+				mutation_class: {
+					type: "string",
+					description: MUTATION_CLASS_PARAMETER_DESCRIPTION,
+					enum: ["AST_REFACTOR", "INTENT_EVOLUTION"],
 				},
 			},
 			required: ["path", "content"],
