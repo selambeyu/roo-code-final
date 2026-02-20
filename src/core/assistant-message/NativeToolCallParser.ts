@@ -469,6 +469,8 @@ export class NativeToolCallParser {
 					nativeArgs = {
 						path: partialArgs.path,
 						content: partialArgs.content,
+						intent_id: partialArgs.intent_id,
+						mutation_class: partialArgs.mutation_class,
 					}
 				}
 				break
@@ -907,6 +909,8 @@ export class NativeToolCallParser {
 						nativeArgs = {
 							path: args.path,
 							content: args.content,
+							intent_id: args.intent_id,
+							mutation_class: args.mutation_class,
 						} as NativeArgsFor<TName>
 					}
 					break

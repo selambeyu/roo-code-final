@@ -23,6 +23,7 @@ import {
 	addCustomInstructions,
 	markdownFormattingSection,
 	getSkillsSection,
+	getIntentDrivenArchitectSection,
 } from "./sections"
 
 // Helper function to get prompt component, filtering out empty objects
@@ -82,9 +83,12 @@ async function generatePrompt(
 	// Tools catalog is not included in the system prompt.
 	const toolsCatalog = ""
 
+	const intentDrivenSection =
+		settings?.reasoningLoopEnabled === true ? `\n${getIntentDrivenArchitectSection()}\n` : ""
+
 	const basePrompt = `${roleDefinition}
 
-${markdownFormattingSection()}
+${markdownFormattingSection()}${intentDrivenSection}
 
 ${getSharedToolUseSection()}${toolsCatalog}
 

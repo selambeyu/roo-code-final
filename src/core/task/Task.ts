@@ -95,6 +95,7 @@ import { getTaskDirectoryPath } from "../../utils/storage"
 import { formatResponse } from "../prompts/responses"
 import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
+import { getConsolidatedIntentContextXml, getValidIntentIds } from "../tools/SelectActiveIntentTool"
 
 // core modules
 import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
@@ -383,6 +384,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 	didRejectTool = false
 	didAlreadyUseTool = false
+
+	/**
+	 * Intent checked out this session (set when select_active_intent succeeds).
+	 * Used by Hook Engine PostToolUse to link agent_trace entries to the intent.
+	 * Two-stage state machine: agent must checkout an intent before write/edit tools.
+	 */
+	currentIntentId: string | undefined = undefined
 	didToolFailInCurrentTurn = false
 	didCompleteReadingStream = false
 	private _started = false
@@ -3771,7 +3779,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			enableSubfolderRules,
 		} = state ?? {}
 
-		return await (async () => {
+		let basePrompt = await (async () => {
 			const provider = this.providerRef.deref()
 
 			if (!provider) {
@@ -3802,12 +3810,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						.getConfiguration(Package.name)
 						.get<boolean>("newTaskRequireTodos", false),
 					isStealthModel: modelInfo?.isStealthModel,
+					reasoningLoopEnabled: vscode.workspace
+						.getConfiguration(Package.name)
+						.get<boolean>("reasoningLoopEnabled", false),
 				},
 				undefined, // todoList
 				this.api.getModel().id,
 				provider.getSkillsManager(),
 			)
 		})()
+
+		// Context Loader (Pre-Hook): inject consolidated intent context when task has an active intent
+		const resource = this.cwd ? vscode.Uri.file(this.cwd) : undefined
+		const reasoningLoopEnabled = vscode.workspace
+			.getConfiguration(Package.name, resource)
+			.get<boolean>("reasoningLoopEnabled", false)
+		if (reasoningLoopEnabled && this.currentIntentId) {
+			const contextXml = await getConsolidatedIntentContextXml(this.cwd, this.currentIntentId)
+			if (contextXml) {
+				basePrompt = `${basePrompt}\n\n${contextXml}`
+			}
+		}
+
+		return basePrompt
 	}
 
 	private getCurrentProfileId(state: any): string {
@@ -4203,6 +4228,56 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			throw new Error("Auto-approval limit reached and user did not approve continuation")
 		}
 
+		// Reasoning Loop: detect if intent handshake is required (no valid select_active_intent in history yet)
+		const reasoningLoopEnabled = vscode.workspace
+			.getConfiguration(Package.name)
+			.get<boolean>("reasoningLoopEnabled", false)
+		let validIntentIds: string[] = []
+		let hasValidSelectActiveIntent = false
+		if (reasoningLoopEnabled) {
+			validIntentIds = await getValidIntentIds(this.cwd)
+			if (validIntentIds.length > 0) {
+				const messagesWithRole = cleanConversationHistory.filter(
+					(m): m is Anthropic.MessageParam => "role" in m && (m.role === "user" || m.role === "assistant"),
+				)
+				const hasAssistantMessage = messagesWithRole.some((m) => m.role === "assistant")
+				if (hasAssistantMessage) {
+					for (const msg of messagesWithRole) {
+						if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue
+						for (const block of msg.content) {
+							if ((block as { type?: string }).type !== "tool_use") continue
+							const b = block as {
+								name?: string
+								input?: { intent_id?: string }
+								function?: { arguments?: string }
+							}
+							if (b.name !== "select_active_intent") continue
+							let intentId: string | undefined = b.input?.intent_id
+							if (intentId == null && typeof b.function?.arguments === "string") {
+								try {
+									const args = JSON.parse(b.function.arguments) as { intent_id?: string }
+									intentId = args?.intent_id
+								} catch {
+									// ignore
+								}
+							}
+							if (intentId != null && validIntentIds.includes(intentId.trim())) {
+								hasValidSelectActiveIntent = true
+								break
+							}
+						}
+						if (hasValidSelectActiveIntent) break
+					}
+				}
+				// Gatekeeper: block the request if we have assistant turns but none with valid intent
+				if (hasAssistantMessage && !hasValidSelectActiveIntent) {
+					await this.say("error", "You must cite a valid active Intent ID.")
+					throw new Error("You must cite a valid active Intent ID.")
+				}
+			}
+		}
+		const requiresIntentCheckout = reasoningLoopEnabled && validIntentIds.length > 0 && !hasValidSelectActiveIntent
+
 		// Whether we include tools is determined by whether we have any tools to send.
 		const modelInfo = this.api.getModel().info
 
@@ -4239,6 +4314,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			})
 			allTools = toolsResult.tools
 			allowedFunctionNames = toolsResult.allowedFunctionNames
+		}
+
+		// Two-stage state machine: on first turn when reasoning loop is on, send ONLY select_active_intent
+		// so the model cannot call list_files or other tools until intent is checked out.
+		if (requiresIntentCheckout && allTools.length > 0) {
+			const selectIntentOnly = allTools.filter(
+				(t): t is OpenAI.Chat.ChatCompletionTool =>
+					"function" in t && typeof t.function === "object" && t.function?.name === "select_active_intent",
+			)
+			if (selectIntentOnly.length > 0) {
+				allTools = selectIntentOnly
+				allowedFunctionNames = ["select_active_intent"]
+			}
 		}
 
 		const shouldIncludeTools = allTools.length > 0

@@ -9,4 +9,6 @@ export interface SystemPromptSettings {
 	newTaskRequireTodos: boolean
 	/** When true, model should hide vendor/company identity in responses */
 	isStealthModel?: boolean
+	/** When true, enforce Intent-Driven Architect protocol: first action must be select_active_intent */
+	reasoningLoopEnabled?: boolean
 }
