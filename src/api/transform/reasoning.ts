@@ -1,6 +1,6 @@
 import { BetaThinkingConfigParam } from "@anthropic-ai/sdk/resources/beta"
 import OpenAI from "openai"
-import type { GenerateContentConfig } from "@google/genai"
+import { ThinkingLevel, type GenerateContentConfig } from "@google/genai"
 
 import type { ModelInfo, ProviderSettings, ReasoningEffortExtended } from "@roo-code/types"
 
@@ -30,9 +30,8 @@ export function isGeminiThinkingLevel(value: unknown): value is GeminiThinkingLe
 	return typeof value === "string" && GEMINI_THINKING_LEVELS.includes(value as GeminiThinkingLevel)
 }
 
-export type GeminiReasoningParams = GenerateContentConfig["thinkingConfig"] & {
-	thinkingLevel?: GeminiThinkingLevel
-}
+/** Matches the SDK's ThinkingConfig (thinkingLevel uses ThinkingLevel enum). */
+export type GeminiReasoningParams = GenerateContentConfig["thinkingConfig"]
 
 export type GetModelReasoningOptions = {
 	model: ModelInfo
@@ -165,5 +164,14 @@ export const getGeminiReasoning = ({
 		return undefined
 	}
 
-	return { thinkingLevel: effortToUse, includeThoughts: true }
+	// Map our lowercase effort to the SDK's ThinkingLevel enum (LOW, MEDIUM, HIGH, MINIMAL).
+	const sdkLevel =
+		effortToUse === "minimal"
+			? ThinkingLevel.MINIMAL
+			: effortToUse === "low"
+				? ThinkingLevel.LOW
+				: effortToUse === "medium"
+					? ThinkingLevel.MEDIUM
+					: ThinkingLevel.HIGH
+	return { thinkingLevel: sdkLevel, includeThoughts: true }
 }

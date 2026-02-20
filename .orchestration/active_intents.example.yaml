@@ -1,0 +1,16 @@
+# Copy to .orchestration/active_intents.yaml (Intent Specification).
+# Machine-managed; updated via Pre-Hooks (when agent picks task) and Post-Hooks (when task complete).
+# Enables Reasoning Loop (roo-cline.reasoningLoopEnabled). Agent must call select_active_intent(intent_id) first.
+active_intents:
+  - id: "INT-001"
+    name: "JWT Authentication Migration"
+    status: "IN_PROGRESS"
+    # Formal scope for parallelism
+    owned_scope:
+      - "src/auth/**"
+      - "src/middleware/jwt.ts"
+    constraints:
+      - "Must not use external auth providers"
+      - "Must maintain backward compatibility with Basic Auth"
+    acceptance_criteria:
+      - "Unit tests in tests/auth/ pass"

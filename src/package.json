@@ -400,6 +400,11 @@
 					"default": false,
 					"description": "%settings.newTaskRequireTodos.description%"
 				},
+				"roo-cline.reasoningLoopEnabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "When enabled, enforces Intent-Driven Architect protocol: the agent must call select_active_intent with a valid intent ID from .orchestration/active_intents.yaml before using other tools or writing code."
+				},
 				"roo-cline.codeIndex.embeddingBatchSize": {
 					"type": "number",
 					"default": 60,

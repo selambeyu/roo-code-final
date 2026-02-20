@@ -106,6 +106,17 @@ export function getProjectRooDirectoryForCwd(cwd: string): string {
 }
 
 /**
+ * Gets the project-local .orchestration directory (Sidecar storage pattern).
+ * Machine-managed: active_intents.yaml, agent_trace.jsonl, intent_map.md.
+ *
+ * @param cwd - Current working directory (project path)
+ * @returns The absolute path to .orchestration
+ */
+export function getOrchestrationDirectoryForCwd(cwd: string): string {
+	return path.join(cwd, ".orchestration")
+}
+
+/**
  * Checks if a directory exists
  */
 export async function directoryExists(dirPath: string): Promise<boolean> {
