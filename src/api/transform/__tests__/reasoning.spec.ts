@@ -2,6 +2,8 @@
 
 import type { ModelInfo, ProviderSettings, ReasoningEffortWithMinimal } from "@roo-code/types"
 
+import { ThinkingLevel } from "@google/genai"
+
 import {
 	getOpenRouterReasoning,
 	getAnthropicReasoning,
@@ -615,7 +617,7 @@ describe("reasoning.ts", () => {
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
 
 			// Budget should not be used for effort-only models
-			expect(result).toEqual({ thinkingLevel: "high", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.HIGH, includeThoughts: true })
 		})
 
 		it("should still return thinkingLevel when enableReasoningEffort is false but effort is explicitly set", () => {
@@ -641,7 +643,7 @@ describe("reasoning.ts", () => {
 			}
 
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
-			expect(result).toEqual({ thinkingLevel: "high", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.HIGH, includeThoughts: true })
 		})
 
 		it("should return thinkingLevel for minimal effort", () => {
@@ -664,7 +666,7 @@ describe("reasoning.ts", () => {
 			}
 
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
-			expect(result).toEqual({ thinkingLevel: "minimal", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.MINIMAL, includeThoughts: true })
 		})
 
 		it("should return thinkingLevel for medium effort", () => {
@@ -687,7 +689,7 @@ describe("reasoning.ts", () => {
 			}
 
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
-			expect(result).toEqual({ thinkingLevel: "medium", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.MEDIUM, includeThoughts: true })
 		})
 
 		it("should handle all four Gemini thinking levels", () => {
@@ -718,7 +720,15 @@ describe("reasoning.ts", () => {
 				}
 
 				const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
-				expect(result).toEqual({ thinkingLevel: level, includeThoughts: true })
+				const expectedLevel =
+					level === "minimal"
+						? ThinkingLevel.MINIMAL
+						: level === "low"
+							? ThinkingLevel.LOW
+							: level === "medium"
+								? ThinkingLevel.MEDIUM
+								: ThinkingLevel.HIGH
+				expect(result).toEqual({ thinkingLevel: expectedLevel, includeThoughts: true })
 			})
 		})
 
@@ -837,7 +847,7 @@ describe("reasoning.ts", () => {
 			}
 
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
-			expect(result).toEqual({ thinkingLevel: "medium", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.MEDIUM, includeThoughts: true })
 		})
 
 		it("should fall back to model default when settings effort is not in supportsReasoningEffort array", () => {
@@ -863,7 +873,7 @@ describe("reasoning.ts", () => {
 
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
 			// "medium" is not in ["low", "high"], so falls back to model.reasoningEffort "low"
-			expect(result).toEqual({ thinkingLevel: "low", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.LOW, includeThoughts: true })
 		})
 
 		it("should return undefined when unsupported effort and model default is also invalid", () => {
@@ -911,7 +921,7 @@ describe("reasoning.ts", () => {
 
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
 			// "high" IS in ["low", "high"], so it should be used directly
-			expect(result).toEqual({ thinkingLevel: "high", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.HIGH, includeThoughts: true })
 		})
 
 		it("should skip validation when supportsReasoningEffort is boolean (not array)", () => {
@@ -935,7 +945,7 @@ describe("reasoning.ts", () => {
 
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
 			// boolean supportsReasoningEffort should not trigger array validation
-			expect(result).toEqual({ thinkingLevel: "medium", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.MEDIUM, includeThoughts: true })
 		})
 
 		it("should fall back to model default when settings has 'minimal' but model only supports ['low', 'high']", () => {
@@ -959,7 +969,7 @@ describe("reasoning.ts", () => {
 
 			const result = getGeminiReasoning(options) as GeminiReasoningParams | undefined
 			// "minimal" is not in ["low", "high"], falls back to "low"
-			expect(result).toEqual({ thinkingLevel: "low", includeThoughts: true })
+			expect(result).toEqual({ thinkingLevel: ThinkingLevel.LOW, includeThoughts: true })
 		})
 	})
 
